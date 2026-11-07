@@ -4,9 +4,36 @@ RPG de mundo abierto en **pixel art 3D**: captura criaturas y, al pelear, toma
 el control de ellas en combates **1 contra 1 en tiempo real** (moverse, esquivar,
 atacar y usar habilidades). Hecho con [Godot 4.7](https://godotengine.org).
 
-## Estado: etapa 1, prototipo de combate
+## Estado: prototipo de combate + muestra del mundo abierto
 
-Arena de prueba con:
+Al pulsar F5 empiezas en un **mundo de bloques** generado al azar (48 × 48), con
+pradera, bosque, desierto, nieve, montaña y costa. Tus criaturas lo cambian con
+sus **habilidades de campo**, al estilo Minecraft o Terraria:
+
+| Criatura | Habilidades de campo | Bioma donde aparece |
+| --- | --- | --- |
+| Brasalce | Quemar árboles y cactus (da carbón) | Desierto |
+| Musgorro | Cortar árboles (da madera); plantar árboles desde nivel 2 | Bosque, pradera |
+| Pedrusco | Romper piedra; minerales de cristal desde nivel 3; excavar tierra y arena | Montaña, pradera |
+| Burbujo | Regar: convierte arena y tierra en pasto. Además nada | Costa |
+| Ventisco | Despejar nieve y hojas | Nieve, montaña |
+
+- Lo que recoges va al inventario y se puede colocar como bloque (F).
+- Las criaturas suben de nivel trabajando y peleando; algunas habilidades piden nivel.
+- Las criaturas salvajes son de más nivel lejos del centro. Tocarlas inicia el combate.
+- Los cambios al mundo se mantienen al volver de una pelea.
+
+### Controles del mundo
+
+| Acción | Teclado | Mando |
+| --- | --- | --- |
+| Moverse | WASD / flechas | Stick izquierdo |
+| Saltar / nadar hacia arriba | Espacio | A |
+| Habilidad de campo 1 / 2 | E / Q | X / Y |
+| Colocar bloque / cambiar material | F / X | RB / LB |
+| Cambiar criatura acompañante | Tab | Back |
+
+La arena de combate incluye:
 
 - Look pixel art: el mundo 3D se dibuja a un tercio de resolución y se agranda sin suavizado.
 - Tu criatura contra una criatura salvaje con IA que rodea, ataca y esquiva.
@@ -17,7 +44,7 @@ Arena de prueba con:
 - Reglas de montura por altura y peso (tierra, nado, vuelo) visibles en pantalla.
 - 5 criaturas: Brasalce, Musgorro, Pedrusco, Burbujo y Ventisco.
 
-## Controles
+### Controles del combate
 
 | Acción | Teclado | Mando |
 | --- | --- | --- |
@@ -27,7 +54,8 @@ Arena de prueba con:
 | Habilidad 1 / 2 | U / I | LB / RB |
 | Capturar | C | A |
 | Cambiar criatura | Tab | Back |
-| Nueva pelea | R | Start |
+| Nueva pelea (solo en la arena suelta) | R | Start |
+| Huir al mundo | Esc | Back |
 
 ## Cómo jugar el prototipo
 
