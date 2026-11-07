@@ -23,6 +23,11 @@ const KEYS := {
 	"field_2": [KEY_Q],
 	"place_block": [KEY_F],
 	"next_material": [KEY_X],
+	# Menú de pausa del mundo
+	"pause": [KEY_ESCAPE],
+	"save_game": [KEY_G],
+	"new_game": [KEY_N],
+	"quit_game": [KEY_Q],
 }
 
 const PAD_BUTTONS := {
@@ -40,6 +45,10 @@ const PAD_BUTTONS := {
 	"field_2": JOY_BUTTON_Y,
 	"place_block": JOY_BUTTON_RIGHT_SHOULDER,
 	"next_material": JOY_BUTTON_LEFT_SHOULDER,
+	"pause": JOY_BUTTON_START,
+	"save_game": JOY_BUTTON_Y,
+	"new_game": JOY_BUTTON_X,
+	"quit_game": JOY_BUTTON_B,
 }
 
 

@@ -25,6 +25,7 @@ func _initialize() -> void:
 	_test_leveling()
 	_test_field_abilities()
 	_test_world_gen()
+	_test_save_game()
 	if _failures == 0:
 		print("OK: %d comprobaciones pasaron." % _checks)
 		quit(0)
@@ -149,3 +150,45 @@ func _test_world_gen() -> void:
 			trees += 1
 	_check(trees > 0, "El mundo tiene árboles (%d troncos)" % trees)
 	_check(WorldGen.tree_cells(5, 3, 5).values().count(Blocks.Id.LOG) == 3, "Un árbol tiene 3 troncos")
+
+
+func _test_save_game() -> void:
+	var edits := {Vector3i(3, 2, 7): Blocks.Id.PLANK, Vector3i(10, 0, 4): Blocks.EMPTY}
+	_check(SaveGame.edits_from_dict(SaveGame.edits_to_dict(edits)) == edits, "Los cambios al mundo se guardan y se recuperan igual")
+
+	var trained := _creature("pedrusco").duplicate() as CreatureData
+	trained.nickname = "Rocky"
+	trained.gain_xp(35)
+	var restored := SaveGame.creature_from_dict(JSON.parse_string(JSON.stringify(SaveGame.creature_to_dict(trained))))
+	_check(restored != null and restored.species_name == "Pedrusco", "Una criatura guardada se recupera")
+	_check(restored != null and restored.level == trained.level and restored.xp == trained.xp, "Se recuperan su nivel y experiencia")
+	_check(restored != null and is_equal_approx(restored.attack, trained.attack) and restored.nickname == "Rocky", "Se recuperan sus stats y su apodo")
+	_check(SaveGame.creature_from_dict({"species": "inexistente"}) == null, "Una especie que ya no existe se ignora")
+
+	var game_state_script := load("res://scripts/core/game_state.gd")
+	var original: Node = game_state_script.new()
+	original.call("reset")
+	var roster: Array[CreatureData] = original.get("roster")
+	roster.append(trained)
+	original.set("active_index", 1)
+	original.set("inventory", {"madera": 4, "cristal": 1})
+	original.set("world_seed", 777)
+	original.set("world_edits", edits)
+	original.set("world_player_pos", Vector3(12.5, 6.0, 30.5))
+	original.set("play_seconds", 4000.0)
+	var json := JSON.stringify(original.call("to_save_dict"))
+
+	var copy: Node = game_state_script.new()
+	_check(copy.call("apply_save", JSON.parse_string(json)) == true, "La partida guardada se puede cargar")
+	var copy_roster: Array[CreatureData] = copy.get("roster")
+	_check(copy_roster.size() == 2 and copy_roster[1].nickname == "Rocky", "Se recupera el equipo completo")
+	_check(copy.get("active_index") == 1 and copy.get("world_seed") == 777, "Se recuperan la criatura activa y la semilla")
+	var inventory: Dictionary = copy.get("inventory")
+	_check(inventory.get("madera") == 4 and inventory.get("cristal") == 1, "Se recupera el inventario")
+	_check(copy.get("world_edits") == edits, "Se recuperan los cambios al mundo")
+	_check(copy.get("world_player_pos") == Vector3(12.5, 6.0, 30.5), "Se recupera la posición del jugador")
+	_check(copy.call("play_time_text") == "1 h 06 min", "El tiempo jugado se muestra en horas y minutos")
+	_check(copy.call("apply_save", {"version": 999}) == false, "Un archivo de otra versión no se carga")
+	_check(copy.call("apply_save", {}) == false, "Un archivo vacío o dañado no se carga")
+	original.free()
+	copy.free()

@@ -15,7 +15,9 @@ const FIELD_XP := 3
 ## Hasta cuántos bloques por encima de los pies se puede alcanzar.
 const REACH_UP := 2
 const NO_CELL := Vector3i(-1, -1, -1)
-const HELP_TEXT := "WASD mover · Espacio saltar o nadar · E / Q habilidad de campo · F colocar bloque · X cambiar material · Tab cambiar criatura · Toca una criatura salvaje para pelear"
+const HELP_TEXT := "WASD mover · Espacio saltar o nadar · E / Q habilidad de campo · F colocar bloque · X cambiar material · Tab cambiar criatura · Esc pausa y guardar · Toca una criatura salvaje para pelear"
+## Cada cuántos segundos se guarda la partida sola.
+const AUTOSAVE_SECONDS := 60.0
 
 var _viewport: SubViewport
 var _world3d: Node3D
@@ -32,10 +34,17 @@ var _hud: Dictionary = {}
 var _message_time := 0.0
 var _encounter_grace := ENCOUNTER_GRACE
 var _material_index := 0
+var _autosave_timer := AUTOSAVE_SECONDS
+var _pause_panel: PanelContainer
+var _pause_label: Label
+var _confirm_new_game := false
 
 
 func _ready() -> void:
+	# Esta escena sigue atendiendo el menú de pausa; el mundo 3D sí se detiene.
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	_viewport = PixelLook.make_pixel_viewport(self, PIXEL_SHRINK)
+	_viewport.process_mode = Node.PROCESS_MODE_PAUSABLE
 	_world3d = Node3D.new()
 	_world3d.name = "World3D"
 	_viewport.add_child(_world3d)
@@ -48,10 +57,25 @@ func _ready() -> void:
 	_build_highlight()
 	_build_hud()
 	_refresh_follower()
-	_show_message("Bienvenido a Tameworld. Tus criaturas pueden cambiar el mundo: prueba E y Q.")
+	if GameState.loaded_from_save:
+		_show_message("Partida cargada (%s jugados). Esc para pausa y guardar." % GameState.play_time_text())
+		GameState.loaded_from_save = false
+	else:
+		_show_message("Bienvenido a Tameworld. Tus criaturas pueden cambiar el mundo: prueba E y Q.")
+	_save()
 
 
 func _process(delta: float) -> void:
+	if get_tree().paused:
+		_handle_pause_menu()
+		return
+	if Input.is_action_just_pressed("pause"):
+		_open_pause_menu()
+		return
+	GameState.world_player_pos = _trainer.global_position
+	_autosave_timer -= delta
+	if _autosave_timer <= 0.0:
+		_save()
 	_encounter_grace -= delta
 	var active := GameState.active_creature()
 	_trainer.can_swim = active.can_swim
@@ -364,6 +388,67 @@ func _check_encounters() -> void:
 			return
 
 
+# --- Guardado y pausa --------------------------------------------------------
+
+func _save() -> void:
+	_autosave_timer = AUTOSAVE_SECONDS
+	GameState.world_player_pos = _trainer.global_position
+	if not GameState.save_game():
+		_show_message("No se pudo guardar la partida.")
+
+
+func _open_pause_menu() -> void:
+	get_tree().paused = true
+	_confirm_new_game = false
+	_pause_panel.visible = true
+	_refresh_pause_text()
+
+
+func _close_pause_menu() -> void:
+	get_tree().paused = false
+	_pause_panel.visible = false
+
+
+func _handle_pause_menu() -> void:
+	if Input.is_action_just_pressed("pause"):
+		_close_pause_menu()
+	elif Input.is_action_just_pressed("save_game"):
+		_save()
+		_close_pause_menu()
+		_show_message("Partida guardada.")
+	elif Input.is_action_just_pressed("new_game"):
+		if not _confirm_new_game:
+			_confirm_new_game = true
+			_refresh_pause_text()
+			return
+		GameState.new_game()
+		get_tree().paused = false
+		get_tree().reload_current_scene()
+	elif Input.is_action_just_pressed("quit_game"):
+		_save()
+		get_tree().quit()
+
+
+func _refresh_pause_text() -> void:
+	var lines: PackedStringArray = [
+		"PAUSA",
+		"",
+		"Tiempo jugado: %s" % GameState.play_time_text(),
+		"Equipo: %d criaturas · Semilla del mundo: %d" % [GameState.roster.size(), GameState.world_seed],
+		"",
+		"Esc / Start: seguir jugando",
+		"G / Y: guardar ahora",
+		"Q / B: guardar y salir del juego",
+	]
+	if _confirm_new_game:
+		lines.append("N / X otra vez: CONFIRMAR partida nueva (se borra la actual)")
+	else:
+		lines.append("N / X: partida nueva")
+	lines.append("")
+	lines.append("También se guarda sola cada minuto, al volver de una pelea y al cerrar la ventana.")
+	_pause_label.text = "\n".join(lines)
+
+
 # --- Interfaz ---------------------------------------------------------------
 
 func _build_hud() -> void:
@@ -404,6 +489,20 @@ func _build_hud() -> void:
 	message.size = Vector2(1000.0, 40.0)
 	message.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM, Control.PRESET_MODE_KEEP_SIZE, 70)
 	_hud["message"] = message
+
+	_pause_panel = PanelContainer.new()
+	var background := StyleBoxFlat.new()
+	background.bg_color = Color(0.05, 0.07, 0.1, 0.88)
+	background.set_content_margin_all(28.0)
+	background.set_corner_radius_all(6)
+	_pause_panel.add_theme_stylebox_override("panel", background)
+	_pause_label = _make_label(20)
+	_pause_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_pause_panel.add_child(_pause_label)
+	root.add_child(_pause_panel)
+	_pause_panel.size = Vector2(760.0, 420.0)
+	_pause_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER, Control.PRESET_MODE_KEEP_SIZE)
+	_pause_panel.visible = false
 
 
 func _make_label(font_size: int) -> Label:
