@@ -87,4 +87,6 @@ El repositorio ya trae configurados skills de Godot y desarrollo de juegos
 (`.claude/settings.json`) y el servidor MCP de Godot (`.mcp.json`). Al abrir
 Claude Code en esta carpeta, acepta instalarlos cuando lo pregunte.
 
+¿Vas a probar el juego? Sigue las [instrucciones de playtest](PLAYTEST.md).
+
 Ver `CLAUDE.md` para las reglas del proyecto y `CREDITS.md` para licencias.
