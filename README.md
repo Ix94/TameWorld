@@ -32,6 +32,11 @@ sus **habilidades de campo**, al estilo Minecraft o Terraria:
 | Habilidad de campo 1 / 2 | E / Q | X / Y |
 | Colocar bloque / cambiar material | F / X | RB / LB |
 | Cambiar criatura acompañante | Tab | Back |
+| Pausa (guardar, partida nueva, salir) | Esc | Start |
+
+La partida se guarda sola cada minuto, al volver de una pelea y al cerrar la
+ventana. Al abrir el juego continúas donde lo dejaste. El menú de pausa muestra
+el tiempo jugado, útil para los playtests.
 
 La arena de combate incluye:
 
