@@ -15,7 +15,8 @@ const FIELD_XP := 3
 ## Hasta cuántos bloques por encima de los pies se puede alcanzar.
 const REACH_UP := 2
 const NO_CELL := Vector3i(-1, -1, -1)
-const HELP_TEXT := "WASD mover · Espacio saltar o nadar · E / Q habilidad de campo · F colocar bloque · X cambiar material · Tab cambiar criatura · Esc pausa y guardar · Toca una criatura salvaje para pelear"
+## Distancia máxima (en bloques) a la que se puede elegir un bloque con el mouse.
+const MOUSE_REACH := 3.5
 ## Cada cuántos segundos se guarda la partida sola.
 const AUTOSAVE_SECONDS := 60.0
 
@@ -58,10 +59,10 @@ func _ready() -> void:
 	_build_hud()
 	_refresh_follower()
 	if GameState.loaded_from_save:
-		_show_message("Partida cargada (%s jugados). Esc para pausa y guardar." % GameState.play_time_text())
+		_show_message("Partida cargada (%s jugados). %s para pausa y guardar." % [GameState.play_time_text(), InputDevice.prompt("pause")])
 		GameState.loaded_from_save = false
 	else:
-		_show_message("Bienvenido a Tameworld. Tus criaturas pueden cambiar el mundo: prueba E y Q.")
+		_show_message("Bienvenido a Tameworld. Tus criaturas pueden cambiar el mundo: prueba %s y %s." % [InputDevice.prompt("field_1"), InputDevice.prompt("field_2")])
 	_save()
 
 
@@ -268,8 +269,37 @@ func _in_bounds(column: Vector2i) -> bool:
 	return column.x >= 0 and column.y >= 0 and column.x < WorldGen.SIZE and column.y < WorldGen.SIZE
 
 
-## El bloque más alto delante del jugador que esté a su alcance (sin contar el agua).
+## Con mouse: el bloque bajo el cursor si está al alcance. Devuelve {} si no hay.
+## "cell" es el bloque apuntado y "place" la celda vacía junto a la cara apuntada.
+func _mouse_hit() -> Dictionary:
+	if not InputDevice.using_mouse():
+		return {}
+	var mouse := get_viewport().get_mouse_position() / float(PIXEL_SHRINK)
+	var origin := _camera.project_ray_origin(mouse)
+	var query := PhysicsRayQueryParameters3D.create(origin, origin + _camera.project_ray_normal(mouse) * 300.0)
+	query.exclude = [_trainer.get_rid()]
+	var hit := _world3d.get_world_3d().direct_space_state.intersect_ray(query)
+	if hit.is_empty():
+		return {}
+	var point: Vector3 = hit["position"]
+	var normal: Vector3 = hit["normal"]
+	var cell := _cell_of(point - normal * 0.5)
+	if not _within_reach(cell):
+		return {}
+	return {"cell": cell, "place": _cell_of(point + normal * 0.5)}
+
+
+func _within_reach(cell: Vector3i) -> bool:
+	var feet := floori(_trainer.global_position.y + 0.05)
+	var flat := Vector2(cell.x + 0.5 - _trainer.global_position.x, cell.z + 0.5 - _trainer.global_position.z)
+	return flat.length() <= MOUSE_REACH and cell.y <= feet + REACH_UP and cell.y >= feet - 3
+
+
+## El bloque elegido: el del cursor (mouse) o el más alto delante del jugador (mando).
 func _target_cell() -> Vector3i:
+	var hit := _mouse_hit()
+	if not hit.is_empty():
+		return hit["cell"]
 	var column := _front_column()
 	if not _in_bounds(column):
 		return NO_CELL
@@ -289,7 +319,7 @@ func _set_block(cell: Vector3i, block: int) -> void:
 func _use_field_ability(slot: int) -> void:
 	var data := GameState.active_creature()
 	if slot >= data.field_ability_ids.size():
-		_show_message("%s no tiene habilidad de campo en %s." % [data.display_name(), "Q" if slot == 1 else "E"])
+		_show_message("%s no tiene habilidad de campo en %s." % [data.display_name(), InputDevice.prompt("field_2" if slot == 1 else "field_1")])
 		return
 	var ability_id := data.field_ability_ids[slot]
 	var ability_name := FieldAbilities.name_of(ability_id)
@@ -336,21 +366,33 @@ func _place_block() -> void:
 	if GameState.item_count(material) <= 0:
 		_show_message("No tienes %s. Consíguela con las habilidades de tus criaturas." % material)
 		return
-	var column := _front_column()
 	var own := _cell_of(_trainer.global_position)
-	if not _in_bounds(column) or column == Vector2i(own.x, own.z):
+	var cell := _place_cell(own)
+	if cell == NO_CELL or cell == own or cell == own + Vector3i.UP:
 		return
-	var top := _target_cell()
-	var y := 0 if top == NO_CELL else top.y + 1
-	if y > own.y + REACH_UP:
+	if cell.y > own.y + REACH_UP:
 		_show_message("Demasiado alto.")
 		return
-	var cell := Vector3i(column.x, y, column.y)
 	var existing := _grid.get_cell_item(cell)
 	if existing != GridMap.INVALID_CELL_ITEM and existing != Blocks.Id.WATER:
 		return
 	GameState.take_item(material)
 	_set_block(cell, Blocks.PLACEABLE[material])
+
+
+## Celda donde se colocaría un bloque: junto a la cara apuntada con el mouse,
+## o encima del bloque más alto delante del jugador.
+func _place_cell(own: Vector3i) -> Vector3i:
+	var hit := _mouse_hit()
+	if not hit.is_empty():
+		var place: Vector3i = hit["place"]
+		var inside := place.x >= 0 and place.z >= 0 and place.x < WorldGen.SIZE and place.z < WorldGen.SIZE and place.y >= 0
+		return place if inside else NO_CELL
+	var column := _front_column()
+	if not _in_bounds(column) or column == Vector2i(own.x, own.z):
+		return NO_CELL
+	var top := _target_cell()
+	return Vector3i(column.x, 0 if top == NO_CELL else top.y + 1, column.y)
 
 
 func _update_highlight() -> void:
@@ -410,6 +452,7 @@ func _close_pause_menu() -> void:
 
 
 func _handle_pause_menu() -> void:
+	_refresh_pause_text()
 	if Input.is_action_just_pressed("pause"):
 		_close_pause_menu()
 	elif Input.is_action_just_pressed("save_game"):
@@ -436,14 +479,16 @@ func _refresh_pause_text() -> void:
 		"Tiempo jugado: %s" % GameState.play_time_text(),
 		"Equipo: %d criaturas · Semilla del mundo: %d" % [GameState.roster.size(), GameState.world_seed],
 		"",
-		"Esc / Start: seguir jugando",
-		"G / Y: guardar ahora",
-		"Q / B: guardar y salir del juego",
+		"Control: %s" % InputDevice.family_name(),
+		"",
+		"%s: seguir jugando" % InputDevice.prompt("pause"),
+		"%s: guardar ahora" % InputDevice.prompt("save_game"),
+		"%s: guardar y salir del juego" % InputDevice.prompt("quit_game"),
 	]
 	if _confirm_new_game:
-		lines.append("N / X otra vez: CONFIRMAR partida nueva (se borra la actual)")
+		lines.append("%s otra vez: CONFIRMAR partida nueva (se borra la actual)" % InputDevice.prompt("new_game"))
 	else:
-		lines.append("N / X: partida nueva")
+		lines.append("%s: partida nueva" % InputDevice.prompt("new_game"))
 	lines.append("")
 	lines.append("También se guarda sola cada minuto, al volver de una pelea y al cerrar la ventana.")
 	_pause_label.text = "\n".join(lines)
@@ -478,8 +523,8 @@ func _build_hud() -> void:
 	_hud["place"] = place
 
 	var help := _make_label(14)
-	help.text = HELP_TEXT
 	root.add_child(help)
+	_hud["help"] = help
 	help.size = Vector2(1240.0, 24.0)
 	help.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT, Control.PRESET_MODE_KEEP_SIZE, 16)
 
@@ -513,11 +558,29 @@ func _make_label(font_size: int) -> Label:
 	return label
 
 
+## Ayuda con los nombres de teclas o botones del control que se está usando.
+func _help_text() -> String:
+	var parts: PackedStringArray = [
+		"%s mover" % InputDevice.move_prompt(),
+		"%s saltar o nadar" % InputDevice.prompt("jump"),
+		"%s / %s habilidad de campo" % [InputDevice.prompt("field_1"), InputDevice.prompt("field_2")],
+		"%s colocar bloque" % InputDevice.prompt("place_block"),
+		"%s cambiar material" % InputDevice.prompt("next_material"),
+		"%s cambiar criatura" % InputDevice.prompt("next_creature"),
+		"%s pausa" % InputDevice.prompt("pause"),
+	]
+	if InputDevice.using_mouse():
+		parts.append("el mouse elige el bloque")
+	parts.append("toca una criatura salvaje para pelear")
+	return " · ".join(parts)
+
+
 func _update_hud(delta: float) -> void:
+	(_hud["help"] as Label).text = _help_text()
 	var data := GameState.active_creature()
 	(_hud["creature"] as Label).text = "%s  Nv. %d  (XP %d/%d)  ·  Equipo: %d" % [data.display_name(), data.level, data.xp, data.xp_to_next(), GameState.roster.size()]
 	var lines: PackedStringArray = []
-	var keys := ["E", "Q"]
+	var keys := [InputDevice.prompt("field_1"), InputDevice.prompt("field_2")]
 	for i in mini(keys.size(), data.field_ability_ids.size()):
 		var id := data.field_ability_ids[i]
 		lines.append("%s: %s → %s" % [keys[i], FieldAbilities.name_of(id), FieldAbilities.targets_text(id)])
@@ -531,14 +594,14 @@ func _update_hud(delta: float) -> void:
 		if item == Blocks.MATERIAL_ORDER[_material_index]:
 			text = "[%s]" % text
 		items.append(text)
-	(_hud["inventory"] as Label).text = "Inventario (F coloca lo marcado): " + " · ".join(items)
+	(_hud["inventory"] as Label).text = "Inventario (%s coloca lo marcado): %s" % [InputDevice.prompt("place_block"), " · ".join(items)]
 
 	var column := _cell_of(_trainer.global_position)
 	var biome := _gen.biome_at(clampi(column.x, 0, WorldGen.SIZE - 1), clampi(column.z, 0, WorldGen.SIZE - 1))
 	var water_text := ""
 	if _trainer.in_water:
 		water_text = "\nNadando" if _trainer.can_swim else "\nEn el agua: lento (tu criatura no nada)"
-	(_hud["place"] as Label).text = "%s · semilla %d%s" % [WorldGen.biome_name(biome), GameState.world_seed, water_text]
+	(_hud["place"] as Label).text = "%s · semilla %d%s\n%s" % [WorldGen.biome_name(biome), GameState.world_seed, water_text, InputDevice.family_name()]
 
 	_message_time = maxf(0.0, _message_time - delta)
 	(_hud["message"] as Label).modulate.a = clampf(_message_time, 0.0, 1.0)

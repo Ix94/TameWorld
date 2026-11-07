@@ -38,6 +38,8 @@ var state_time := 0.0
 ## Dirección deseada en el plano XZ (longitud 0 a 1).
 var move_input := Vector3.ZERO
 var facing := Vector3.FORWARD
+## Dirección de apuntado con el mouse. Si es cero, la criatura apunta sola al rival.
+var aim_direction := Vector3.ZERO
 ## Mayor que 1 = el ataque tarda más en salir (la IA lo usa para que se pueda esquivar).
 var windup_scale := 1.0
 var target: Creature
@@ -197,7 +199,10 @@ func _physics_process(delta: float) -> void:
 				_turn_towards(move_input, delta)
 		State.WINDUP:
 			horizontal = horizontal.move_toward(Vector3.ZERO, 40.0 * delta)
-			_face_target(delta)
+			if aim_direction.length() > 0.1:
+				_turn_towards(aim_direction, delta)
+			else:
+				_face_target(delta)
 			if state_time >= float(_attack["windup"]) * windup_scale:
 				horizontal = _begin_active()
 		State.ACTIVE:
@@ -244,7 +249,10 @@ func _start_attack(attack: Dictionary, element: int) -> bool:
 	_attack = attack
 	_attack_element = element
 	_has_hit = false
-	_face_target(-1.0)
+	if aim_direction.length() > 0.1:
+		look_along(aim_direction)
+	else:
+		_face_target(-1.0)
 	_enter(State.WINDUP)
 	_show_telegraph(true)
 	return true

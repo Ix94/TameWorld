@@ -23,14 +23,24 @@ sus **habilidades de campo**, al estilo Minecraft o Terraria:
 - Las criaturas salvajes son de más nivel lejos del centro. Tocarlas inicia el combate.
 - Los cambios al mundo se mantienen al volver de una pelea.
 
+### Controles compatibles
+
+El control principal es **teclado y mouse**. También funcionan los mandos de
+**Xbox**, **PlayStation**, **Nintendo Switch** y mandos **genéricos** de cualquier
+marca (incluida la cruceta). El juego detecta qué control usas y muestra en
+pantalla los nombres de sus botones (por ejemplo, Cruz y Círculo en PlayStation,
+o la A a la derecha en Nintendo). En la tabla, "Mando" usa la posición del botón
+en un mando de Xbox.
+
 ### Controles del mundo
 
 | Acción | Teclado | Mando |
 | --- | --- | --- |
 | Moverse | WASD / flechas | Stick izquierdo |
 | Saltar / nadar hacia arriba | Espacio | A |
-| Habilidad de campo 1 / 2 | E / Q | X / Y |
-| Colocar bloque / cambiar material | F / X | RB / LB |
+| Habilidad de campo 1 / 2 | E o clic izq. / Q o clic central | X / Y |
+| Colocar bloque / cambiar material | F o clic der. / X o rueda | RB / LB |
+| Elegir bloque | El cursor del mouse | El bloque de delante |
 | Cambiar criatura acompañante | Tab | Back |
 | Pausa (guardar, partida nueva, salir) | Esc | Start |
 
@@ -54,9 +64,10 @@ La arena de combate incluye:
 | Acción | Teclado | Mando |
 | --- | --- | --- |
 | Moverse | WASD / flechas | Stick izquierdo |
-| Esquivar | Espacio | B |
-| Golpe / golpe fuerte | J / K | X / Y |
-| Habilidad 1 / 2 | U / I | LB / RB |
+| Esquivar | Espacio o Shift | B |
+| Golpe / golpe fuerte | J o clic izq. / K o clic der. | X / Y |
+| Apuntar | El cursor del mouse | Automático hacia el rival |
+| Habilidad 1 / 2 | U o 1 / I o 2 | LB / RB |
 | Capturar | C | A |
 | Cambiar criatura | Tab | Back |
 | Nueva pelea (solo en la arena suelta) | R | Start |

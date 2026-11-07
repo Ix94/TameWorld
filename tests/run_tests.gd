@@ -26,6 +26,7 @@ func _initialize() -> void:
 	_test_field_abilities()
 	_test_world_gen()
 	_test_save_game()
+	_test_control_prompts()
 	if _failures == 0:
 		print("OK: %d comprobaciones pasaron." % _checks)
 		quit(0)
@@ -192,3 +193,31 @@ func _test_save_game() -> void:
 	_check(copy.call("apply_save", {}) == false, "Un archivo vacío o dañado no se carga")
 	original.free()
 	copy.free()
+
+
+func _test_control_prompts() -> void:
+	_check(ControlPrompts.family_for("Xbox Series Controller") == ControlPrompts.Family.XBOX, "Reconoce un mando de Xbox")
+	_check(ControlPrompts.family_for("DualSense Wireless Controller") == ControlPrompts.Family.PLAYSTATION, "Reconoce un DualSense de PlayStation")
+	_check(ControlPrompts.family_for("PS4 Controller") == ControlPrompts.Family.PLAYSTATION, "Reconoce un DualShock 4")
+	_check(ControlPrompts.family_for("Nintendo Switch Pro Controller") == ControlPrompts.Family.NINTENDO, "Reconoce el Pro Controller de Switch")
+	_check(ControlPrompts.family_for("USB Gamepad") == ControlPrompts.Family.GENERIC, "Un mando desconocido se trata como genérico")
+	_check(ControlPrompts.button_label(ControlPrompts.Family.XBOX, JOY_BUTTON_A) == "A", "Xbox: el botón de abajo es A")
+	_check(ControlPrompts.button_label(ControlPrompts.Family.PLAYSTATION, JOY_BUTTON_A) == "Cruz", "PlayStation: el botón de abajo es Cruz")
+	_check(ControlPrompts.button_label(ControlPrompts.Family.NINTENDO, JOY_BUTTON_A) == "B", "Nintendo: el botón de abajo es B")
+	_check(ControlPrompts.button_label(ControlPrompts.Family.NINTENDO, JOY_BUTTON_B) == "A", "Nintendo: el botón de la derecha es A")
+
+	var setup: Node = load("res://scripts/core/input_setup.gd").new()
+	setup.call("_ready")
+	setup.free()
+	_check(ControlPrompts.for_action("dodge", ControlPrompts.Family.KEYBOARD_MOUSE) == "Espacio / Shift", "Teclado: esquivar con Espacio o Shift")
+	_check(ControlPrompts.for_action("attack_light", ControlPrompts.Family.KEYBOARD_MOUSE) == "J / Clic izq.", "Teclado y mouse: golpe con J o clic izquierdo")
+	_check(ControlPrompts.for_action("field_1", ControlPrompts.Family.KEYBOARD_MOUSE) == "E / Clic izq.", "Mundo: habilidad de campo con E o clic izquierdo")
+	_check(ControlPrompts.for_action("dodge", ControlPrompts.Family.PLAYSTATION) == "Círculo", "PlayStation: esquivar con Círculo")
+	_check(ControlPrompts.for_action("jump", ControlPrompts.Family.NINTENDO) == "B", "Nintendo: saltar con B (botón de abajo)")
+	_check(ControlPrompts.for_action("pause", ControlPrompts.Family.XBOX) == "Menu", "Xbox: pausa con Menu")
+	for action: String in ["move_left", "move_right", "move_up", "move_down"]:
+		var has_dpad := false
+		for event in InputMap.action_get_events(action):
+			if event is InputEventJoypadButton:
+				has_dpad = true
+		_check(has_dpad, "La cruceta también sirve para %s" % action)

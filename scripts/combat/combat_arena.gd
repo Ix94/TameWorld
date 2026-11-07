@@ -8,8 +8,6 @@ const ARENA_RADIUS := 11.0
 const CAMERA_PITCH_DEG := 40.0
 const CAMERA_DISTANCE := 30.0
 const CAMERA_SIZE := 15.0
-const HELP_TEXT := "WASD mover · Espacio esquivar · J golpe · K golpe fuerte · U / I habilidades · C capturar · Tab cambiar criatura · R nueva pelea"
-const WORLD_HELP_TEXT := "WASD mover · Espacio esquivar · J golpe · K golpe fuerte · U / I habilidades · C capturar · Esc huir al mundo"
 ## Segundos antes de volver al mundo cuando la pelea termina.
 const RETURN_DELAY := 2.5
 
@@ -88,6 +86,8 @@ func _start_fight() -> void:
 
 	_player_ctrl = PlayerController.new()
 	_player_ctrl.me = _player
+	_player_ctrl.camera = _camera
+	_player_ctrl.pixel_shrink = PIXEL_SHRINK
 	add_child(_player_ctrl)
 	_enemy_ai = AIController.new()
 	_enemy_ai.me = _enemy
@@ -326,9 +326,8 @@ func _build_hud() -> void:
 	_hud["status"] = status
 
 	var help := _make_label(14)
-	help.text = WORLD_HELP_TEXT if GameState.from_world else HELP_TEXT
 	root.add_child(help)
-	help.size = Vector2(1000.0, 24.0)
+	help.size = Vector2(1240.0, 24.0)
 	help.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT, Control.PRESET_MODE_KEEP_SIZE, 16)
 	_hud["help"] = help
 
@@ -377,7 +376,28 @@ func _make_bar(color: Color) -> ProgressBar:
 	return bar
 
 
+## Ayuda con los nombres de teclas o botones del control que se está usando.
+func _help_text() -> String:
+	var parts: PackedStringArray = [
+		"%s mover" % InputDevice.move_prompt(),
+		"%s esquivar" % InputDevice.prompt("dodge"),
+		"%s golpe" % InputDevice.prompt("attack_light"),
+		"%s golpe fuerte" % InputDevice.prompt("attack_heavy"),
+		"%s / %s habilidades" % [InputDevice.prompt("ability_1"), InputDevice.prompt("ability_2")],
+		"%s capturar" % InputDevice.prompt("capture"),
+	]
+	if GameState.from_world:
+		parts.append("%s huir al mundo" % InputDevice.prompt("flee"))
+	else:
+		parts.append("%s cambiar criatura" % InputDevice.prompt("next_creature"))
+		parts.append("%s nueva pelea" % InputDevice.prompt("restart"))
+	if InputDevice.using_mouse():
+		parts.append("el mouse apunta los ataques")
+	return " · ".join(parts)
+
+
 func _update_hud(delta: float) -> void:
+	(_hud["help"] as Label).text = _help_text()
 	_fill_panel(_hud["player"], _player, true)
 	_fill_panel(_hud["enemy"], _enemy, false)
 	(_hud["status"] as Label).text = "Cristales: %d · Equipo: %d criaturas" % [GameState.capture_orbs, GameState.roster.size()]
@@ -405,11 +425,11 @@ func _fill_panel(panel: Dictionary, creature: Creature, is_player: bool) -> void
 		info.text = "Debilitada: ya no se puede capturar."
 	else:
 		var chance := CombatRules.capture_chance(data.catch_rate, creature.hp_ratio(), creature.is_stunned())
-		info.text = "Captura (C): %d%%" % roundi(chance * 100.0)
+		info.text = "Captura (%s): %d%%" % [InputDevice.prompt("capture"), roundi(chance * 100.0)]
 
 
 func _abilities_text(creature: Creature) -> String:
-	var keys := ["U", "I"]
+	var keys := [InputDevice.prompt("ability_1"), InputDevice.prompt("ability_2")]
 	var parts: PackedStringArray = []
 	for i in mini(keys.size(), creature.data.ability_ids.size()):
 		var ability := AbilityLibrary.find(creature.data.ability_ids[i])

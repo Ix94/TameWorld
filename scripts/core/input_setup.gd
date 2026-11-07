@@ -1,6 +1,8 @@
 extends Node
 ## Registra los controles por código, así no dependen del editor.
-## Teclado y mando. Para el coop local futuro: repetir con el prefijo "p2_"
+## Teclado y mouse (control principal) y cualquier mando: Xbox, PlayStation, Nintendo
+## o genérico. Godot usa la misma distribución física para todos los mandos.
+## Para el coop en pantalla dividida (etapa 12): repetir con el prefijo "p2_"
 ## y filtrar por `device` en cada evento de mando.
 
 const KEYS := {
@@ -8,11 +10,11 @@ const KEYS := {
 	"move_right": [KEY_D, KEY_RIGHT],
 	"move_up": [KEY_W, KEY_UP],
 	"move_down": [KEY_S, KEY_DOWN],
-	"dodge": [KEY_SPACE],
+	"dodge": [KEY_SPACE, KEY_SHIFT],
 	"attack_light": [KEY_J],
 	"attack_heavy": [KEY_K],
-	"ability_1": [KEY_U],
-	"ability_2": [KEY_I],
+	"ability_1": [KEY_U, KEY_1],
+	"ability_2": [KEY_I, KEY_2],
 	"capture": [KEY_C],
 	"next_creature": [KEY_TAB],
 	"restart": [KEY_R],
@@ -52,6 +54,25 @@ const PAD_BUTTONS := {
 }
 
 
+## Botones del mouse. El mismo clic hace cosas distintas en el combate y en el mundo.
+const MOUSE_BUTTONS := {
+	"attack_light": [MOUSE_BUTTON_LEFT],
+	"attack_heavy": [MOUSE_BUTTON_RIGHT],
+	"field_1": [MOUSE_BUTTON_LEFT],
+	"field_2": [MOUSE_BUTTON_MIDDLE],
+	"place_block": [MOUSE_BUTTON_RIGHT],
+	"next_material": [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN],
+}
+
+## La cruceta también mueve, para mandos sin stick o de estilo retro.
+const DPAD := {
+	"move_left": JOY_BUTTON_DPAD_LEFT,
+	"move_right": JOY_BUTTON_DPAD_RIGHT,
+	"move_up": JOY_BUTTON_DPAD_UP,
+	"move_down": JOY_BUTTON_DPAD_DOWN,
+}
+
+
 func _ready() -> void:
 	for action: String in KEYS:
 		_ensure_action(action)
@@ -65,6 +86,18 @@ func _ready() -> void:
 		var index: int = PAD_BUTTONS[action]
 		button.button_index = index as JoyButton
 		InputMap.action_add_event(action, button)
+	for action: String in MOUSE_BUTTONS:
+		_ensure_action(action)
+		for button_index: int in MOUSE_BUTTONS[action]:
+			var click := InputEventMouseButton.new()
+			click.button_index = button_index as MouseButton
+			InputMap.action_add_event(action, click)
+	for action: String in DPAD:
+		_ensure_action(action)
+		var dpad := InputEventJoypadButton.new()
+		var dpad_index: int = DPAD[action]
+		dpad.button_index = dpad_index as JoyButton
+		InputMap.action_add_event(action, dpad)
 	_add_axis("move_left", JOY_AXIS_LEFT_X, -1.0)
 	_add_axis("move_right", JOY_AXIS_LEFT_X, 1.0)
 	_add_axis("move_up", JOY_AXIS_LEFT_Y, -1.0)
