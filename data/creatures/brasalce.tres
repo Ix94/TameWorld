@@ -16,4 +16,5 @@ height_m = 1.4
 weight_kg = 60.0
 body_color = Color(0.91, 0.45, 0.23, 1)
 catch_rate = 0.45
-
+field_ability_ids = PackedStringArray("quemar")
+habitat_biomes = PackedInt32Array(2)

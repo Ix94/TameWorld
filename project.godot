@@ -6,7 +6,7 @@ config_version=5
 
 config/name="Tameworld"
 config/description="RPG de mundo abierto en pixel art 3D: captura criaturas y pelea controlándolas."
-run/main_scene="res://scenes/combat_arena.tscn"
+run/main_scene="res://scenes/world.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://icon.svg"
 

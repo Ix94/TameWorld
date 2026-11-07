@@ -9,6 +9,9 @@ const CAMERA_PITCH_DEG := 40.0
 const CAMERA_DISTANCE := 30.0
 const CAMERA_SIZE := 15.0
 const HELP_TEXT := "WASD mover · Espacio esquivar · J golpe · K golpe fuerte · U / I habilidades · C capturar · Tab cambiar criatura · R nueva pelea"
+const WORLD_HELP_TEXT := "WASD mover · Espacio esquivar · J golpe · K golpe fuerte · U / I habilidades · C capturar · Esc huir al mundo"
+## Segundos antes de volver al mundo cuando la pelea termina.
+const RETURN_DELAY := 2.5
 
 var _viewport: SubViewport
 var _world: Node3D
@@ -22,6 +25,7 @@ var _capturing := false
 var _fight_over := false
 var _hud: Dictionary = {}
 var _message_time := 0.0
+var _return_timer := RETURN_DELAY
 
 
 func _ready() -> void:
@@ -32,7 +36,9 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	if not _capturing:
+	if GameState.from_world:
+		_process_world_fight(delta)
+	elif not _capturing:
 		if Input.is_action_just_pressed("restart"):
 			_start_fight()
 		elif Input.is_action_just_pressed("next_creature"):
@@ -46,15 +52,36 @@ func _process(delta: float) -> void:
 
 # --- Pelea -----------------------------------------------------------------
 
+## En peleas que vienen del mundo no hay reinicio: se huye o se vuelve al terminar.
+func _process_world_fight(delta: float) -> void:
+	if _capturing:
+		return
+	if Input.is_action_just_pressed("flee") and not _fight_over:
+		_show_message("Huiste de la pelea.")
+		_fight_over = true
+	elif Input.is_action_just_pressed("capture"):
+		_try_capture()
+	if _fight_over:
+		_return_timer -= delta
+		if _return_timer <= 0.0:
+			GameState.from_world = false
+			set_process(false)
+			get_tree().change_scene_to_file.call_deferred(GameState.WORLD_SCENE)
+
+
 func _start_fight() -> void:
 	for node in [_player, _enemy, _player_ctrl, _enemy_ai]:
 		if is_instance_valid(node):
 			node.queue_free()
 	_fight_over = false
 	_capturing = false
+	_return_timer = RETURN_DELAY
 
 	_player = _spawn(GameState.active_creature(), 0, Vector3(0.0, 0.0, 4.0))
-	_enemy = _spawn(GameState.random_wild(_player.data.species_name), 1, Vector3(0.0, 0.0, -4.0))
+	var wild_data := GameState.take_pending_wild()
+	if wild_data == null:
+		wild_data = GameState.random_wild(_player.data.species_name)
+	_enemy = _spawn(wild_data, 1, Vector3(0.0, 0.0, -4.0))
 	_player.target = _enemy
 	_enemy.target = _player
 	_enemy.windup_scale = 1.6
@@ -87,13 +114,24 @@ func _spawn(data: CreatureData, team: int, at: Vector3) -> Creature:
 
 func _on_player_died(_creature: Creature) -> void:
 	_fight_over = true
-	_show_message("Tu criatura se debilitó. R para reintentar.")
+	_show_message("Tu criatura se debilitó. %s" % ("Volviendo al mundo..." if GameState.from_world else "R para reintentar."))
 
 
 func _on_enemy_died(_creature: Creature) -> void:
 	_fight_over = true
 	GameState.capture_orbs += 1
-	_show_message("¡Ganaste! +1 cristal de captura. R para otra criatura salvaje.")
+	var next_step := "Volviendo al mundo..." if GameState.from_world else "R para otra criatura salvaje."
+	_show_message("¡Ganaste! +1 cristal de captura. %s" % next_step)
+	_reward_xp(15 + 5 * _enemy.data.level)
+
+
+## La criatura del jugador gana experiencia; al subir de nivel mejoran sus stats.
+func _reward_xp(amount: int) -> void:
+	if not is_instance_valid(_player):
+		return
+	var gained := _player.data.gain_xp(amount)
+	if gained > 0:
+		_show_message("¡%s subió a nivel %d!" % [_player.data.display_name(), _player.data.level])
 
 
 func _try_capture() -> void:
@@ -148,10 +186,12 @@ func _try_capture() -> void:
 
 	if success:
 		GameState.add_to_roster(wild.data)
+		_reward_xp(10)
 		wild.queue_free()
 		_enemy = null
 		_fight_over = true
-		_show_message("¡Capturaste a %s! Ya tienes %d criaturas. Tab para usarla, R para otra pelea." % [wild.data.display_name(), GameState.roster.size()])
+		var hint := "Pulsa Tab en el mundo para que te acompañe." if GameState.from_world else "Tab para usarla, R para otra pelea."
+		_show_message("¡Capturaste a %s! Ya tienes %d criaturas. %s" % [wild.data.display_name(), GameState.roster.size(), hint])
 	else:
 		wild.visible = true
 		wild.process_mode = Node.PROCESS_MODE_INHERIT
@@ -165,37 +205,14 @@ func _try_capture() -> void:
 ## El mundo 3D se dibuja en un viewport 3 veces más pequeño que la ventana
 ## y se agranda sin suavizado: así se consigue el look pixel art.
 func _build_viewport() -> void:
-	var container := SubViewportContainer.new()
-	container.stretch = true
-	container.stretch_shrink = PIXEL_SHRINK
-	container.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	add_child(container)
-	container.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_viewport = SubViewport.new()
-	_viewport.msaa_3d = Viewport.MSAA_DISABLED
-	_viewport.audio_listener_enable_3d = true
-	container.add_child(_viewport)
+	_viewport = PixelLook.make_pixel_viewport(self, PIXEL_SHRINK)
 	_world = Node3D.new()
 	_world.name = "World"
 	_viewport.add_child(_world)
 
 
 func _build_world() -> void:
-	var environment := Environment.new()
-	environment.background_mode = Environment.BG_COLOR
-	environment.background_color = Color(0.45, 0.7, 0.95)
-	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	environment.ambient_light_color = Color(0.75, 0.8, 0.9)
-	environment.ambient_light_energy = 0.6
-	var world_env := WorldEnvironment.new()
-	world_env.environment = environment
-	_world.add_child(world_env)
-
-	var sun := DirectionalLight3D.new()
-	sun.rotation_degrees = Vector3(-55.0, 35.0, 0.0)
-	sun.shadow_enabled = true
-	sun.light_energy = 1.1
-	_world.add_child(sun)
+	PixelLook.add_daylight(_world, Color(0.45, 0.7, 0.95))
 
 	var ground := StaticBody3D.new()
 	_world.add_child(ground)
@@ -285,11 +302,7 @@ func _camera_target() -> Vector3:
 
 func _update_camera(delta: float) -> void:
 	_camera_pos = _camera_pos.lerp(_camera_target(), clampf(6.0 * delta, 0.0, 1.0))
-	# Ajusta la cámara a la rejilla de píxeles para que la imagen no "tiemble".
-	var texel := CAMERA_SIZE / maxf(1.0, float(_viewport.size.y))
-	var cam_basis := _camera.global_transform.basis
-	var local := (cam_basis.inverse() * _camera_pos).snapped(Vector3(texel, texel, texel))
-	_camera.global_position = cam_basis * local
+	PixelLook.snap_camera(_camera, _camera_pos, _viewport)
 
 
 # --- Interfaz --------------------------------------------------------------
@@ -313,7 +326,7 @@ func _build_hud() -> void:
 	_hud["status"] = status
 
 	var help := _make_label(14)
-	help.text = HELP_TEXT
+	help.text = WORLD_HELP_TEXT if GameState.from_world else HELP_TEXT
 	root.add_child(help)
 	help.size = Vector2(1000.0, 24.0)
 	help.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT, Control.PRESET_MODE_KEEP_SIZE, 16)
@@ -378,7 +391,7 @@ func _fill_panel(panel: Dictionary, creature: Creature, is_player: bool) -> void
 	if not box.visible:
 		return
 	var data := creature.data
-	(panel["title"] as Label).text = "%s%s  [%s]" % ["" if is_player else "Salvaje: ", data.display_name(), Elements.name_of(data.element)]
+	(panel["title"] as Label).text = "%s%s  Nv. %d  [%s]" % ["" if is_player else "Salvaje: ", data.display_name(), data.level, Elements.name_of(data.element)]
 	var hp_bar := panel["hp"] as ProgressBar
 	hp_bar.max_value = data.max_hp
 	hp_bar.value = creature.hp

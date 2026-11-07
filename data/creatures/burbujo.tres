@@ -18,3 +18,5 @@ body_color = Color(0.3, 0.55, 0.95, 1)
 catch_rate = 0.5
 can_swim = true
 can_dive = true
+field_ability_ids = PackedStringArray("regar")
+habitat_biomes = PackedInt32Array(5)

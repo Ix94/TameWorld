@@ -26,10 +26,11 @@ jobs:
       - name: Pruebas de reglas
         run: ./godot --headless --path . --script res://tests/run_tests.gd
 
-      - name: Ejecutar la arena (prueba de humo)
+      - name: Ejecutar el mundo y la arena (prueba de humo)
         run: |
           ./godot --headless --path . --quit-after 600 2>&1 | tee run.log
-          if grep -E "SCRIPT ERROR|Parse Error|Failed to load script|Invalid call|Invalid access" import.log run.log; then
+          ./godot --headless --path . --quit-after 600 res://scenes/combat_arena.tscn 2>&1 | tee arena.log
+          if grep -E "SCRIPT ERROR|Parse Error|Failed to load script|Invalid call|Invalid access|ERROR:" import.log run.log arena.log; then
             echo "Se encontraron errores de script."
             exit 1
           fi

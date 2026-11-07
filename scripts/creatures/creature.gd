@@ -348,50 +348,15 @@ func _build_body() -> void:
 	collision.position.y = shape.height * 0.5
 	add_child(collision)
 
-	_visual = Node3D.new()
+	_visual = CreatureLook.build(data)
 	add_child(_visual)
-	_material = PixelLook.toon(data.body_color)
-
-	var capsule := CapsuleMesh.new()
-	capsule.radius = r
-	capsule.height = shape.height
-	capsule.radial_segments = 8
-	capsule.rings = 2
-	_add_part(capsule, _material, Vector3(0.0, shape.height * 0.5, 0.0))
-
-	var white := PixelLook.toon(Color.WHITE)
-	var black := PixelLook.unshaded(Color.BLACK)
-	for side: float in [-1.0, 1.0]:
-		var eye_pos := Vector3(side * r * 0.45, shape.height * 0.72, -r * 0.8)
-		_add_part(_sphere(r * 0.22), white, eye_pos)
-		_add_part(_sphere(r * 0.11), black, eye_pos + Vector3(0.0, 0.0, -r * 0.18))
-
-	var crest := PrismMesh.new()
-	crest.size = Vector3(r * 0.8, r * 0.7, r * 0.5)
-	_add_part(crest, PixelLook.toon(data.body_color.darkened(0.3)), Vector3(0.0, shape.height + r * 0.3, 0.0))
+	_material = _visual.get_meta("body_material") as StandardMaterial3D
 
 	_telegraph_material = PixelLook.unshaded(Color(1.0, 0.15, 0.1, 0.35))
 	_telegraph = MeshInstance3D.new()
 	_telegraph.visible = false
 	_telegraph.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(_telegraph)
-
-
-func _add_part(mesh: Mesh, material: Material, offset: Vector3) -> void:
-	var part := MeshInstance3D.new()
-	part.mesh = mesh
-	part.material_override = material
-	part.position = offset
-	_visual.add_child(part)
-
-
-func _sphere(r: float) -> SphereMesh:
-	var sphere := SphereMesh.new()
-	sphere.radius = r
-	sphere.height = r * 2.0
-	sphere.radial_segments = 6
-	sphere.rings = 3
-	return sphere
 
 
 ## Muestra en el suelo la zona que va a golpear el ataque, para poder esquivarlo.

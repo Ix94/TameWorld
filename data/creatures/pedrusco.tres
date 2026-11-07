@@ -17,3 +17,5 @@ weight_kg = 200.0
 body_color = Color(0.6, 0.56, 0.5, 1)
 catch_rate = 0.4
 can_dig = true
+field_ability_ids = PackedStringArray("romper", "excavar")
+habitat_biomes = PackedInt32Array(4, 0)

@@ -16,6 +16,13 @@ const KEYS := {
 	"capture": [KEY_C],
 	"next_creature": [KEY_TAB],
 	"restart": [KEY_R],
+	"flee": [KEY_ESCAPE],
+	# Mundo
+	"jump": [KEY_SPACE],
+	"field_1": [KEY_E],
+	"field_2": [KEY_Q],
+	"place_block": [KEY_F],
+	"next_material": [KEY_X],
 }
 
 const PAD_BUTTONS := {
@@ -27,6 +34,12 @@ const PAD_BUTTONS := {
 	"capture": JOY_BUTTON_A,
 	"next_creature": JOY_BUTTON_BACK,
 	"restart": JOY_BUTTON_START,
+	"flee": JOY_BUTTON_BACK,
+	"jump": JOY_BUTTON_A,
+	"field_1": JOY_BUTTON_X,
+	"field_2": JOY_BUTTON_Y,
+	"place_block": JOY_BUTTON_RIGHT_SHOULDER,
+	"next_material": JOY_BUTTON_LEFT_SHOULDER,
 }
 
 
