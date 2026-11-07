@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="CreatureData" format=3]
+
+[ext_resource type="Script" path="res://scripts/creatures/creature_data.gd" id="1_data"]
+
+[resource]
+script = ExtResource("1_data")
+species_name = "Burbujo"
+element = 2
+max_hp = 100.0
+max_energy = 100.0
+attack = 20.0
+defense = 20.0
+move_speed = 6.0
+ability_ids = PackedStringArray("chorro", "embestida")
+height_m = 2.3
+weight_kg = 260.0
+body_color = Color(0.3, 0.55, 0.95, 1)
+catch_rate = 0.5
+can_swim = true
+can_dive = true

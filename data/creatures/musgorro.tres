@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="CreatureData" format=3]
+
+[ext_resource type="Script" path="res://scripts/creatures/creature_data.gd" id="1_data"]
+
+[resource]
+script = ExtResource("1_data")
+species_name = "Musgorro"
+element = 3
+max_hp = 130.0
+max_energy = 90.0
+attack = 18.0
+defense = 24.0
+move_speed = 5.0
+ability_ids = PackedStringArray("temblor", "embestida")
+height_m = 2.4
+weight_kg = 320.0
+body_color = Color(0.35, 0.7, 0.32, 1)
+catch_rate = 0.5
+

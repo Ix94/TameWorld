@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="CreatureData" format=3]
+
+[ext_resource type="Script" path="res://scripts/creatures/creature_data.gd" id="1_data"]
+
+[resource]
+script = ExtResource("1_data")
+species_name = "Pedrusco"
+element = 4
+max_hp = 150.0
+max_energy = 80.0
+attack = 22.0
+defense = 30.0
+move_speed = 4.2
+ability_ids = PackedStringArray("temblor", "embestida")
+height_m = 1.0
+weight_kg = 200.0
+body_color = Color(0.6, 0.56, 0.5, 1)
+catch_rate = 0.4
+can_dig = true

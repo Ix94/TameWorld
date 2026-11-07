@@ -1,0 +1,14 @@
+{
+  "extraKnownMarketplaces": {
+    "skillsmith": {
+      "source": { "source": "github", "repo": "jame581/skillsmith" }
+    },
+    "awesome-gamedev-agent-skills": {
+      "source": { "source": "github", "repo": "gamedev-skills/awesome-gamedev-agent-skills" }
+    }
+  },
+  "enabledPlugins": {
+    "godot-prompter@skillsmith": true,
+    "gamedev@awesome-gamedev-agent-skills": true
+  }
+}
